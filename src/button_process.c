@@ -13,7 +13,7 @@ static int end = 0;
 int main(int argc, char *argv[])
 {
 
-    static Button_t button7 = {
+    static Button_t button = {
         .gpio.pin = 7,
         .gpio.eMode = eModeInput,
         .ePullMode = ePullModePullUp,
@@ -26,7 +26,7 @@ int main(int argc, char *argv[])
         .state = LOCKED,
         .master = MASTER};
 
-    if (Button_init(&button7))
+    if (Button_init(&button))
         return EXIT_FAILURE;
 
     signal(SIGINT, closeApp);
@@ -39,10 +39,10 @@ int main(int argc, char *argv[])
         {
             while (1)
             {
-                if (!Button_read(&button7))
+                if (!Button_read(&button))
                 {
                     usleep(_1ms * 40);
-                    while (!Button_read(&button7))
+                    while (!Button_read(&button))
                         ;
                     usleep(_1ms * 40);
                     break;
