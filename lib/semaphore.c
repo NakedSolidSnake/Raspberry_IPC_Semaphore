@@ -11,68 +11,91 @@ union semun{
   unsigned short *array;
 };
 
-int semaphore_init(sema_t *s, int key)
+bool Semaphore_Init(Semaphore_t *semaphore)
 {
-  if(s == NULL)
-    return -1;
+  bool status = false;
 
-  s->id = semget((key_t) key, s->sema_count, 0666 | IPC_CREAT);
-  if(s->id < 0)
-    return -1;
-
-  if(s->master)
+  do 
   {
-     union semun u;
-     u.val = 1;
+    if(!semaphore)
+      break;
 
-    if(semctl(s->id, 0, SETVAL, u) < 0)
-      return -1;  
-  }
+    semaphore->id = semget((key_t) semaphore->key, semaphore->sema_count, 0666 | IPC_CREAT);
+    if(semaphore->id < 0)
+      break;
 
-  return 0;
+    if (semaphore->type == master)
+    {
+      union semun u;
+      u.val = 1;
+
+      if (semctl(semaphore->id, 0, SETVAL, u) < 0)
+        break;
+    }
+
+    status = true;
+
+  } while(false);
+
+  return status;
 }
 
-int semaphore_lock(sema_t *s)
+bool Semaphore_Lock(Semaphore_t *semaphore)
 {
+  bool status = false;
   struct sembuf p = {0, -1, SEM_UNDO};
 
-  if(s == NULL)
-    return -1;
+  do
+  {
+    if(!semaphore)
+      break;
 
-  if(semop(s->id, &p, 1) < 0)
-    return -1;
+    if(semop(semaphore->id, &p, 1) < 0)
+      break;
 
-  s->state = LOCKED;
+    semaphore->state = locked;
+    status = true;
+  } while(false);
 
-  return 0;
+  return status;
 }
 
-int semaphore_unlock(sema_t *s)
+bool Semaphore_Unlock(Semaphore_t *semaphore)
 {
+  bool status = false;
   struct sembuf v = {0, 1, SEM_UNDO};
-  
-  if(s == NULL)
-    return -1;
 
-  if(semop(s->id, &v, 1) < 0)
-    return -1;
+  do
+  {
+    if(!semaphore)
+      break;
 
-  s->state = UNLOCKED;
+    if(semop(semaphore->id, &v, 1) < 0)
+      break;
 
-  return 0;
+    semaphore->state = unlocked;
+    status = true;
+
+  } while(false);
+
+  return status;
 }
-
-int semaphore_destroy(sema_t *s)
+bool Semaphore_Destroy(Semaphore_t *semaphore)
 {
   union semun sem_union;
-  if(s == NULL)
-    return -1;
+  bool status = false;
 
-  if(semctl(s->id, 0, IPC_RMID, sem_union) < 0)
-    return -1;
+  do 
+  {
+    if(!semaphore)
+      break;
 
-  s->state = UNLOCKED;
+    if(semctl(semaphore->id, 0, IPC_RMID, sem_union) < 0)
+      break;
 
-  return 0;
+    semaphore->state = unlocked;
+    status = true;
+  } while(false);
 
+  return status;
 }

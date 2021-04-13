@@ -1,26 +1,32 @@
 #ifndef __SEMAPHORE_H
 #define __SEMAPHORE_H
 
-#define LOCKED      1
-#define UNLOCKED    0
+#include <stdbool.h>
 
-#define SLAVE       0
-#define MASTER      1
+typedef enum 
+{
+  unlocked,
+  locked
+} Semaphore_State;
 
-typedef struct sema 
+typedef enum 
+{
+  slave,
+  master
+} Semaphore_Type;
+
+typedef struct 
 {
   int id;
   int sema_count;
-  int state;
-  int master;
-}sema_t;
+  int key;
+  Semaphore_State state;
+  Semaphore_Type type;
+} Semaphore_t;
 
-int semaphore_init(sema_t *s, int key);
-
-int semaphore_lock(sema_t *s);
-
-int semaphore_unlock(sema_t *s);
-
-int semaphore_destroy(sema_t *s);
+bool Semaphore_Init(Semaphore_t *semaphore);
+bool Semaphore_Lock(Semaphore_t *semaphore);
+bool Semaphore_Unlock(Semaphore_t *semaphore);
+bool Semaphore_Destroy(Semaphore_t *semaphore);
 
 #endif
