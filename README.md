@@ -1,274 +1,170 @@
 <p align="center">
   <img src="https://cdn.pixabay.com/photo/2012/04/10/23/30/semaphore-27029_960_720.png">
 </p>
-            
-# Semaphore
+
+# _Semaphore System V_
+
+## Tópicos
+* [Introdução](#introdução)
+* [Implementação](#implementação)
+* [launch_processes](#launch_processes)
+* [button_interface](#button_interface)
+* [led_interface](#led_interface)
+* [Compilando, Executando e Matando os processos](#compilando-executando-e-matando-os-processos)
+* [Compilando](#compilando)
+* [Clonando o projeto](#clonando-o-projeto)
+* [Selecionando o modo](#selecionando-o-modo)
+* [Modo PC](#modo-pc)
+* [Modo RASPBERRY](#modo-raspberry)
+* [Executando](#executando)
+* [Interagindo com o exemplo](#interagindo-com-o-exemplo)
+* [MODO PC](#modo-pc-1)
+* [MODO RASPBERRY](#modo-raspberry-1)
+* [Matando os processos](#matando-os-processos)
+* [Conclusão](#conclusão)
+* [Referência](#referência)
+
 ## Introdução
+Preencher
+
 ## Implementação
-### Biblioteca
-#### semaphore.h
+
+Para demonstrar o uso desse IPC, iremos utilizar o modelo Produtor/Consumidor, onde o processo Produtor(_button_process_) vai escrever seu estado interno no arquivo, e o Consumidor(_led_process_) vai ler o estado interno e vai aplicar o estado para si. Aplicação é composta por três executáveis sendo eles:
+* _launch_processes_ - é responsável por lançar os processos _button_process_ e _led_process_ atráves da combinação _fork_ e _exec_
+* _button_interface_ - é reponsável por ler o GPIO em modo de leitura da Raspberry Pi e escrever o estado interno no arquivo
+* _led_interface_ - é reponsável por ler do arquivo o estado interno do botão e aplicar em um GPIO configurado como saída
+
+### *launch_processes*
+
+No _main_ criamos duas variáveis para armazenar o PID do *button_process* e do *led_process*, e mais duas variáveis para armazenar o resultado caso o _exec_ venha a falhar.
 ```c
-#ifndef __SEMAPHORE_H
-#define __SEMAPHORE_H
-
-#define LOCKED      1
-#define UNLOCKED    0
-
-#define SLAVE       0
-#define MASTER      1
-
-typedef struct sema 
-{
-  int id;
-  int sema_count;
-  int state;
-  int master;
-}sema_t;
-
-int semaphore_init(sema_t *s, int key);
-
-int semaphore_lock(sema_t *s);
-
-int semaphore_unlock(sema_t *s);
-
-int semaphore_destroy(sema_t *s);
-
-#endif
-
+int pid_button, pid_led;
+int button_status, led_status;
 ```
-#### semaphore.c
+
+Em seguida criamos um processo clone, se processo clone for igual a 0, criamos um _array_ de *strings* com o nome do programa que será usado pelo _exec_, em caso o _exec_ retorne, o estado do retorno é capturado e será impresso no *stdout* e aborta a aplicação. Se o _exec_ for executado com sucesso o programa *button_process* será carregado. 
 ```c
-#include <stdlib.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/ipc.h>
-#include <sys/sem.h>
-#include "semaphore.h"
+pid_button = fork();
 
-union semun{
-  int val;
-  struct semid_ds *buf;
-  unsigned short *array;
-};
-
-int semaphore_init(sema_t *s, int key)
+if(pid_button == 0)
 {
-  if(s == NULL)
-    return -1;
-
-  s->id = semget((key_t) key, s->sema_count, 0666 | IPC_CREAT);
-  if(s->id < 0)
-    return -1;
-
-  if(s->master)
-  {
-     union semun u;
-     u.val = 1;
-
-    if(semctl(s->id, 0, SETVAL, u) < 0)
-      return -1;  
-  }
-
-  return 0;
-}
-
-int semaphore_lock(sema_t *s)
-{
-  struct sembuf p = {0, -1, SEM_UNDO};
-
-  if(s == NULL)
-    return -1;
-
-  if(semop(s->id, &p, 1) < 0)
-    return -1;
-
-  s->state = LOCKED;
-
-  return 0;
-}
-
-int semaphore_unlock(sema_t *s)
-{
-  struct sembuf v = {0, 1, SEM_UNDO};
-  
-  if(s == NULL)
-    return -1;
-
-  if(semop(s->id, &v, 1) < 0)
-    return -1;
-
-  s->state = UNLOCKED;
-
-  return 0;
-}
-
-int semaphore_destroy(sema_t *s)
-{
-  union semun sem_union;
-  if(s == NULL)
-    return -1;
-
-  if(semctl(s->id, 0, IPC_RMID, sem_union) < 0)
-    return -1;
-
-  s->state = UNLOCKED;
-
-  return 0;
-
-}
-
+    //start button process
+    char *args[] = {"./button_process", NULL};
+    button_status = execvp(args[0], args);
+    printf("Error to start button process, status = %d\n", button_status);
+    abort();
+}   
 ```
-### launch_processes.c
+
+O mesmo procedimento é repetido novamente, porém com a intenção de carregar o *led_process*.
+
 ```c
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
+pid_led = fork();
 
-int main(int argc, char *argv[])
+if(pid_led == 0)
 {
-    int pid_button, pid_led;
-    int button_status, led_status;
-
-    pid_button = fork();
-
-    if(pid_button == 0)
-    {
-        //start button process
-        char *args[] = {"./button_process", NULL};
-        button_status = execvp(args[0], args);
-        printf("Error to start button process, status = %d\n", button_status);
-        abort();
-    }   
-
-    pid_led = fork();
-
-    if(pid_led == 0)
-    {
-        //Start led process
-        char *args[] = {"./led_process", NULL};
-        led_status = execvp(args[0], args);
-        printf("Error to start led process, status = %d\n", led_status);
-        abort();
-    }
-
-    return EXIT_SUCCESS;
+    //Start led process
+    char *args[] = {"./led_process", NULL};
+    led_status = execvp(args[0], args);
+    printf("Error to start led process, status = %d\n", led_status);
+    abort();
 }
 ```
-### button_process.c
-```c
-#include <unistd.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <semaphore/semaphore.h>
-#include <signal.h>
-#include <button.h>
 
-#define _1ms 1000
+## *button_interface*
+descrever o código
+## *led_interface*
+descrever o código
 
-static void closeApp(int s);
-static int end = 0;
+## Compilando, Executando e Matando os processos
+Para compilar e testar o projeto é necessário instalar a biblioteca de [hardware](https://github.com/NakedSolidSnake/Raspberry_lib_hardware) necessária para resolver as dependências de configuração de GPIO da Raspberry Pi.
 
-int main(int argc, char *argv[])
-{
+## Compilando
+Para faciliar a execução do exemplo, o exemplo proposto foi criado baseado em uma interface, onde é possível selecionar se usará o hardware da Raspberry Pi 3, ou se a interação com o exemplo vai ser através de input feito por FIFO e o output visualizado através de LOG.
 
-    static Button_t button = {
-        .gpio.pin = 7,
-        .gpio.eMode = eModeInput,
-        .ePullMode = ePullModePullUp,
-        .eIntEdge = eIntEdgeFalling,
-        .cb = NULL};
+### Clonando o projeto
+Pra obter uma cópia do projeto execute os comandos a seguir:
 
-    sema_t sema = {
-        .id = -1,
-        .sema_count = 2,
-        .state = LOCKED,
-        .master = MASTER};
-
-    if (Button_init(&button))
-        return EXIT_FAILURE;
-
-    signal(SIGINT, closeApp);
-
-    semaphore_init(&sema, 1234);
-
-    while (end == 0)
-    {
-        if (semaphore_lock(&sema) == 0)
-        {
-            while (1)
-            {
-                if (!Button_read(&button))
-                {
-                    usleep(_1ms * 40);
-                    while (!Button_read(&button))
-                        ;
-                    usleep(_1ms * 40);
-                    break;
-                }
-                else
-                {
-                    usleep(_1ms);
-                }
-            }
-            semaphore_unlock(&sema);
-        }
-    }
-
-    semaphore_destroy(&sema);
-    exit(EXIT_SUCCESS);
-}
-
-static void closeApp(int s)
-{
-    end = 1;
-}
+```bash
+$ git clone https://github.com/NakedSolidSnake/Raspberry_IPC_Semaphore_SystemV
+$ cd Raspberry_IPC_Semaphore_SystemV
+$ mkdir build && cd build
 ```
-### led_process.c
-```c
-#include <unistd.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <semaphore/semaphore.h>
-#include <led.h>
 
-int main(int argc, char *argv[])
-{
-    int state = 0;
-    sema_t sema = {
-        .id = -1,
-        .sema_count = 2,
-        .state = LOCKED,
-        .master = SLAVE
-    };
+### Selecionando o modo
+Para selecionar o modo devemos passar para o cmake uma variável de ambiente chamada de ARCH, e pode-se passar os seguintes valores, PC ou RASPBERRY, para o caso de PC o exemplo terá sua interface preenchida com os sources presentes na pasta src/platform/pc, que permite a interação com o exemplo através de FIFO e LOG, caso seja RASPBERRY usará os GPIO's descritos no [artigo](https://github.com/NakedSolidSnake/Raspberry_lib_hardware#testando-a-instala%C3%A7%C3%A3o-e-as-conex%C3%B5es-de-hardware).
 
-     LED_t led =
-    {
-        .gpio.pin = 0,
-        .gpio.eMode = eModeOutput
-    };
-
-    if (LED_init(&led))
-        return EXIT_FAILURE;
-
-    if(semaphore_init(&sema, 1234))
-        return EXIT_FAILURE;
-
-    while(1)
-    {
-        if (semaphore_lock(&sema) == 0)
-        {            
-            LED_set(&led, (eState_t)state);
-            state ^= 0x01; 
-            semaphore_unlock(&sema);
-        }
-        else
-        {
-            usleep(100);    
-        }
-    }
-
-    exit(EXIT_SUCCESS);
-}
-
+#### Modo PC
+```bash
+$ cmake -DARCH=PC ..
+$ make
 ```
+
+#### Modo RASPBERRY
+```bash
+$ cmake -DARCH=RASPBERRY ..
+$ make
+```
+
+## Executando
+Para executar a aplicação execute o processo _*launch_processes*_ para lançar os processos *button_process* e *led_process* que foram determinados de acordo com o modo selecionado.
+
+```bash
+$ cd bin
+$ ./launch_processes
+```
+
+Uma vez executado podemos verificar se os processos estão rodando atráves do comando 
+```bash
+$ ps -ef | grep _process
+```
+
+O output 
+```bash
+cssouza  16871  3449  0 07:15 pts/4    00:00:00 ./button_process
+cssouza  16872  3449  0 07:15 pts/4    00:00:00 ./led_process
+```
+## Interagindo com o exemplo
+Dependendo do modo de compilação selecionado a interação com o exemplo acontece de forma diferente
+
+### MODO PC
+Para o modo PC, precisamos abrir um terminal e monitorar os LOG's
+```bash
+$ sudo tail -f /var/log/syslog | grep LED
+```
+
+Dessa forma o terminal irá apresentar somente os LOG's referente ao exemplo.
+
+Para simular o botão, o processo em modo PC cria uma FIFO para permitir enviar comandos para a aplicação, dessa forma todas as vezes que for enviado o número 0 irá logar no terminal onde foi configurado para o monitoramento, segue o exemplo
+```bash
+echo "0" > /tmp/queue_posix_fifo
+```
+
+Output do LOG quando enviado o comando algumas vezez
+```bash
+Apr 15 22:22:54 cssouza-Latitude-5490 LED QUEUE POSIX[30421]: LED Status: Off
+Apr 15 22:23:18 cssouza-Latitude-5490 LED QUEUE POSIX[30421]: LED Status: On
+Apr 15 22:23:19 cssouza-Latitude-5490 LED QUEUE POSIX[30421]: LED Status: Off
+Apr 15 22:23:20 cssouza-Latitude-5490 LED QUEUE POSIX[30421]: LED Status: On
+Apr 15 22:23:20 cssouza-Latitude-5490 LED QUEUE POSIX[30421]: LED Status: Off
+Apr 15 22:23:22 cssouza-Latitude-5490 LED QUEUE POSIX[30421]: LED Status: On
+```
+
+### MODO RASPBERRY
+Para o modo RASPBERRY a cada vez que o botão for pressionado irá alternar o estado do LED.
+
+## Matando os processos
+Para matar os processos criados execute o script kill_process.sh
+```bash
+$ cd bin
+$ ./kill_process.sh
+```
+
 ## Conclusão
+Preencher
+
+## Referência
+* [Link do projeto completo](https://github.com/NakedSolidSnake/Raspberry_IPC_Semaphore_SystemV)
+* [Mark Mitchell, Jeffrey Oldham, and Alex Samuel - Advanced Linux Programming](https://www.amazon.com.br/Advanced-Linux-Programming-CodeSourcery-LLC/dp/0735710430)
+* [fork, exec e daemon](https://github.com/NakedSolidSnake/Raspberry_fork_exec_daemon)
+* [biblioteca hardware](https://github.com/NakedSolidSnake/Raspberry_lib_hardware)

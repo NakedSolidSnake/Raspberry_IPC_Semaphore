@@ -6,6 +6,22 @@
 
 #define _1ms 1000
 
+static void wait_press(void *object, Button_Interface *button)
+{
+    while (true)
+    {
+        if (!button->Read(object))
+        {
+            usleep(_1ms * 100);
+            break;
+        }
+        else
+        {
+            usleep(_1ms);
+        }
+    }
+}
+
 bool Button_Run(void *object, Semaphore_t *semaphore, Button_Interface *button)
 {
     if (button->Init(object) == false)
@@ -18,17 +34,7 @@ bool Button_Run(void *object, Semaphore_t *semaphore, Button_Interface *button)
     {
         if(Semaphore_Lock(semaphore) == true)
         {
-            while (true)
-            {
-                if (!button->Read(object))
-                {
-                    usleep(_1ms * 100);
-                    break;
-                }
-                else
-                    usleep(_1ms);
-            }
-
+            wait_press(object, button);
             Semaphore_Unlock(semaphore);
         }
     }
