@@ -29,10 +29,10 @@
 * [Referência](#referência)
 
 ## Introdução
-Em programação Multithread ou Multiprocessos existem pontos onde é necessário compartilhar a mesma informação, normalmente conhecidos como variáveis globais, ou de forma mais charmoso da variáveis de contexto. Onde essas variáveis guardam algum tipo de informação ou estado interno, e seu acesso de forma não sincronizada pode acarretar em um comportamento indesejável. Neste artigo será visto um IPC conhecido como Semaphore, que garante que isso tipo de coisa não aconteça.
+Em programação Multithread ou Multiprocessos existem pontos onde é necessário compartilhar a mesma informação, normalmente conhecidos como variáveis globais, ou de forma mais charmosa: "variáveis de contexto". Onde essas variáveis guardam algum tipo de informação ou estado interno, e seu acesso de forma não sincronizada pode acarretar em um comportamento indesejável. Neste artigo será visto um IPC conhecido como Semaphore, que garante que isso tipo de coisa não aconteça.
 
 ## Semaphore System V
-Semaphore System V diferente dos outros IPC's não é utilizado para transferir dados, mas sim para coordená-los. Para exemplificar tome uma variável global em um contexto onde se tem duas Threads, sendo a Thread A responsável por incrementar o conteúdo, e a Thread B responsável por decrementar esse conteúdo e estão concorrendo o acesso dessa posição de memória. Em um dado instante de tempo o conteúdo esteja com o valor 10, neste ponto a Thread A incrementa o conteúdo em 1 totalizando 11, porém no mesmo instante a Thread B decrementa totalizando 9. Por uma análise sequencial o valor esperado seria o próprio 10 mas ao fim totalizou 9 o que aconteceu aqui foi que as Threads concorreram resultando nesse resultado inesperado. Para garantir que o acesso seja feito de forma sincronizada é necessário estabelecer uma regra de acesso onde quando uma Thread estiver usando a outra precisa esperar para assim acessar. Os Semaphores podem ter dois tipos: contador e exclusão mútua.
+Semaphore System V diferente dos outros IPC's não é utilizado para transferir dados, mas sim para coordená-los. Para exemplificar tome uma variável global em um contexto onde se tem duas Threads, sendo a Thread A responsável por incrementar o conteúdo, e a Thread B responsável por decrementar esse conteúdo e estão concorrendo o acesso dessa posição de memória. Em um dado instante de tempo o conteúdo esteja com o valor 10, neste ponto a Thread A incrementa o conteúdo em 1 totalizando 11, porém no mesmo instante a Thread B decrementa totalizando 9. Por uma análise sequencial o valor esperado seria o próprio 10, mas ao fim totalizou 9 o que aconteceu aqui foi que as Threads concorreram resultando nesse resultado inesperado. Para garantir que o acesso seja feito de forma sincronizada é necessário estabelecer uma regra de acesso onde quando uma Thread estiver usando a outra precisa esperar para assim acessar. Os Semaphores podem ter dois tipos: contador e exclusão mútua.
 
 ## Systemcalls
 Para usar Semaphores é necessário algumas funções sendo a primeira _semget_ que é responsável por criar o identificador do _Semaphore_.
@@ -64,7 +64,7 @@ int semctl(int semid, int semnum, int cmd, ...);
 ```
 
 ## ipcs
-A ferramenta ipcs é um utilitário para poder verificar o estado dos IPC's sendo eles: Queues, Semaphores e Shared Memory, o seu funcionanamento será demonstrado mais a seguir. Para mais informações execute:
+A ferramenta ipcs é um utilitário para poder verificar o estado dos IPC's sendo eles: Queues, Semaphores e Shared Memory, o seu funcionamento será demonstrado mais a seguir. Para mais informações execute:
 ```bash
 $ man ipcs
 ```
