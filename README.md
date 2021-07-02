@@ -70,7 +70,7 @@ $ man ipcs
 ```
 
 ## Implementação
-Para facilitar a implementação a API da Queue foi abstraída para facilitar o uso.
+Para facilitar a implementação a API do Semaphore foi abstraída para facilitar o uso.
 
 ### semaphore.h
 Nesse _header_ é criado dois _enums_ um para identificar o estado e o outro seu tipo. Foi criado uma estrutura que contém todos os argumentos necessários para manipular o _semaphore_
