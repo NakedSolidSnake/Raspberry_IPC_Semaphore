@@ -419,7 +419,7 @@ Jun 30 08:12:33 dell-cssouza LED SEMAPHORE[21141]: LED Status: Off
 Para o modo RASPBERRY a cada vez que o botão for pressionado irá alternar o estado do LED.
 
 ## ipcs funcionamento
-Para inspecionar as queues presentes é necessário passar o argumento -s que representa queue, o comando fica dessa forma:
+Para inspecionar os semaphores presentes é necessário passar o argumento -s que representa queue, o comando fica dessa forma:
 ```bash
 $ ipcs -s
 ```
